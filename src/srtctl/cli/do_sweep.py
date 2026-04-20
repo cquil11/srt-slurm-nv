@@ -22,9 +22,16 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from srtctl.cli.mixins import BenchmarkStageMixin, FrontendStageMixin, PostProcessStageMixin, WorkerStageMixin
+from srtctl.cli.mixins import (
+    BenchmarkStageMixin,
+    FrontendStageMixin,
+    PostProcessStageMixin,
+    TelemetryStageMixin,
+    WorkerStageMixin,
+)
 from srtctl.core.config import load_config
 from srtctl.core.health import wait_for_port
+from srtctl.core.lockfile import write_lockfile
 from srtctl.core.processes import (
     ManagedProcess,
     ProcessRegistry,
@@ -42,7 +49,13 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class SweepOrchestrator(WorkerStageMixin, FrontendStageMixin, BenchmarkStageMixin, PostProcessStageMixin):
+class SweepOrchestrator(
+    WorkerStageMixin,
+    FrontendStageMixin,
+    TelemetryStageMixin,
+    BenchmarkStageMixin,
+    PostProcessStageMixin,
+):
     """Main orchestrator for benchmark sweeps.
 
     Usage:
@@ -108,6 +121,8 @@ class SweepOrchestrator(WorkerStageMixin, FrontendStageMixin, BenchmarkStageMixi
             "--log-dir",
             str(self.runtime.log_dir),
         ]
+        if self.config.infra.nats_max_payload_mb is not None:
+            cmd += ["--nats-max-payload-mb", str(self.config.infra.nats_max_payload_mb)]
 
         mounts = dict(self.runtime.container_mounts)
         mounts[setup_script] = setup_script_container
@@ -308,6 +323,9 @@ class SweepOrchestrator(WorkerStageMixin, FrontendStageMixin, BenchmarkStageMixi
         if self.config.profiling.enabled:
             logger.info("Profiling: %s", self.config.profiling.type)
 
+        # Write initial lockfile with config + SLURM context (fingerprint added after run)
+        write_lockfile(self.runtime.log_dir.parent, self.config)
+
         registry = ProcessRegistry(job_id=self.runtime.job_id)
         stop_event = threading.Event()
         setup_signal_handlers(stop_event, registry)
@@ -330,6 +348,10 @@ class SweepOrchestrator(WorkerStageMixin, FrontendStageMixin, BenchmarkStageMixi
             reporter.report(JobStatus.FRONTEND, JobStage.FRONTEND, "Starting frontend")
             frontend_procs = self.start_frontend(registry)
             for proc in frontend_procs:
+                registry.add_process(proc)
+
+            telemetry_procs = self.start_telemetry()
+            for proc in telemetry_procs:
                 registry.add_process(proc)
 
             self._print_connection_info()

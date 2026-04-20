@@ -28,6 +28,7 @@ import requests
 
 from srtctl.benchmarks.base import SCRIPTS_DIR
 from srtctl.core.config import load_cluster_config
+from srtctl.core.lockfile import collect_worker_fingerprints, generate_reproduction_report, write_lockfile
 from srtctl.core.schema import AIAnalysisConfig, S3Config
 from srtctl.core.slurm import start_srun_process
 
@@ -36,6 +37,9 @@ if TYPE_CHECKING:
     from srtctl.core.schema import SrtConfig
 
 logger = logging.getLogger(__name__)
+
+POSTPROCESS_PARSE_FAILED_EXIT = 20
+POSTPROCESS_UPLOAD_FAILED_EXIT = 11
 
 
 class PostProcessStageMixin:
@@ -118,14 +122,15 @@ class PostProcessStageMixin:
         return os.environ.get(env_var)
 
     def _copy_config_to_logs(self) -> None:
-        """Copy the job config YAML into the log directory so it's included in S3 uploads.
+        """Copy job artifacts into the log directory so they're included in S3 uploads.
 
-        The config is saved to outputs/{job_id}/config.yaml at submit time,
-        but S3 syncs outputs/{job_id}/logs/. This copies it into logs/ so it
-        gets uploaded alongside benchmark results and worker logs.
+        At submit time, config.yaml, sbatch_script.sh, and {job_id}.json are saved
+        to outputs/{job_id}/, but S3 syncs outputs/{job_id}/logs/. This copies them
+        into logs/ so they get uploaded alongside benchmark results and worker logs.
         """
         output_dir = self.runtime.log_dir.parent
-        for name in ("config.yaml", "sbatch_script.sh"):
+        files_to_copy = ["config.yaml", "sbatch_script.sh", f"{self.runtime.job_id}.json"]
+        for name in files_to_copy:
             src = output_dir / name
             if not src.exists():
                 continue
@@ -158,6 +163,21 @@ class PostProcessStageMixin:
 
         # Extract benchmark results (reads rollup if available)
         benchmark_results = self._extract_benchmark_results()
+
+        # Write lockfile with verification
+        # TODO: include benchmark results once rollup format is standardized across
+        # sa-bench, trace-replay, and mooncake-router (currently only sa-bench has
+        # a structured rollup with runs[].throughput_toks etc.)
+        verification = getattr(self, "_identity_verification", None)
+        write_lockfile(
+            self.runtime.log_dir.parent,
+            self.config,
+            self.runtime.log_dir,
+            verification=verification,
+        )
+
+        # Compare against previous lockfile if this was a lockfile re-run
+        self._compare_against_previous_lock()
 
         # Run srtlog + S3 upload in single container (if S3 configured)
         parquet_path, s3_url = self._run_postprocess_container()
@@ -222,6 +242,42 @@ class PostProcessStageMixin:
 
         return None
 
+    def _compare_against_previous_lock(self) -> None:
+        """If this run was from a lockfile, compare against previous run."""
+        try:
+            lock_data = getattr(self.config, "_lock_data", None)
+            if not lock_data:
+                return
+
+            new_fps = collect_worker_fingerprints(self.runtime.log_dir)
+            if not new_fps:
+                return
+
+            # TODO: pass benchmark results once rollup format is standardized
+            summary_lines, report_lines, issues = generate_reproduction_report(
+                lock_data,
+                new_fps,
+            )
+
+            # Log summary to sweep log
+            if summary_lines:
+                logger.info("")
+                logger.info("=" * 60)
+                logger.info("Comparison against previous lockfile run")
+                logger.info("=" * 60)
+                for line in summary_lines:
+                    logger.info(line)
+                logger.info("=" * 60)
+
+            # Write full report to file
+            if report_lines:
+                report_path = self.runtime.log_dir / "reproduction-report.txt"
+                report_path.write_text("\n".join(report_lines) + "\n")
+                logger.info(f"Reproduction report: {report_path}")
+
+        except Exception as e:
+            logger.debug("Lockfile comparison skipped: %s", e)
+
     def _run_postprocess_container(self) -> tuple[Path | None, str | None]:
         """Run srtlog and upload entire log directory to S3.
 
@@ -248,34 +304,7 @@ class PostProcessStageMixin:
         endpoint_flag = f"--endpoint-url {s3_config.endpoint_url}" if s3_config.endpoint_url else ""
 
         # Build the post-processing script
-        script = f"""
-set -e
-
-# Install uv, srtlog, and awscli
-echo "Installing uv..."
-pip install uv
-
-echo "Installing srtlog and awscli..."
-cd /tmp
-git clone --depth 1 https://github.com/ishandhanani/srtlog.git
-uv pip install --system ./srtlog awscli
-
-# Run srtlog to generate parquet
-echo "Running srtlog parse..."
-cd /logs
-srtlog parse .
-
-# Upload entire log directory to S3
-echo "Uploading entire log directory to S3..."
-aws s3 sync /logs {s3_url} {endpoint_flag}
-echo "Upload complete: {s3_url}"
-
-# Report what was uploaded
-echo ""
-echo "Uploaded files:"
-find /logs -type f | wc -l
-echo "files total"
-"""
+        script = self._build_postprocess_script(s3_url, endpoint_flag)
 
         # Build env for AWS credentials
         env: dict[str, str] = {}
@@ -295,7 +324,7 @@ echo "files total"
                 nodelist=[self.runtime.nodes.head],
                 output=str(self.runtime.log_dir / "postprocess.log"),
                 container_image="python:3.11",
-                container_mounts={str(self.runtime.log_dir): "/logs"},
+                container_mounts={self.runtime.log_dir: Path("/logs")},
                 env_to_set=env,
             )
             proc.wait(timeout=600)  # 10 min timeout for install + parse + full sync
@@ -304,6 +333,9 @@ echo "files total"
 
             if proc.returncode == 0:
                 logger.info("Post-processing complete: %s", s3_url)
+                return parquet_path if parquet_path.exists() else None, s3_url
+            if proc.returncode == POSTPROCESS_PARSE_FAILED_EXIT:
+                logger.warning("srtlog parsing failed, but raw logs were still uploaded to %s", s3_url)
                 return parquet_path if parquet_path.exists() else None, s3_url
             else:
                 logger.warning("Post-processing failed (exit code: %s)", proc.returncode)
@@ -316,6 +348,58 @@ echo "files total"
         except Exception as e:
             logger.warning("Post-processing container failed: %s", e)
             return None, None
+
+    def _build_postprocess_script(self, s3_url: str, endpoint_flag: str) -> str:
+        """Build the post-processing shell script.
+
+        Upload is always attempted if awscli installs successfully. Parsing is
+        best-effort so raw logs survive parser/tooling failures.
+        """
+        return f"""
+set -u
+set -o pipefail
+
+PARSE_STATUS=0
+UPLOAD_STATUS=0
+
+echo "Installing uv and awscli..."
+if ! pip install uv awscli; then
+  echo "Failed to install uv/awscli"
+  exit {POSTPROCESS_UPLOAD_FAILED_EXIT}
+fi
+
+echo "Installing srtlog..."
+if cd /tmp && git clone --depth 1 https://github.com/ishandhanani/srtlog.git && uv pip install --system ./srtlog; then
+  echo "Running srtlog parse..."
+  cd /logs
+  srtlog parse . || PARSE_STATUS=$?
+else
+  echo "Failed to install srtlog; continuing with raw log upload"
+  PARSE_STATUS=1
+fi
+
+cat > /logs/postprocess-status.json <<EOF
+{{"parse_status": $PARSE_STATUS, "s3_url": "{s3_url}"}}
+EOF
+
+echo "Uploading entire log directory to S3..."
+aws s3 sync /logs {s3_url} {endpoint_flag} || UPLOAD_STATUS=$?
+
+if [ "$UPLOAD_STATUS" -ne 0 ]; then
+  echo "Upload failed with status $UPLOAD_STATUS"
+  exit {POSTPROCESS_UPLOAD_FAILED_EXIT}
+fi
+
+echo "Upload complete: {s3_url}"
+echo ""
+echo "Uploaded files:"
+find /logs -type f | wc -l
+echo "files total"
+
+if [ "$PARSE_STATUS" -ne 0 ]; then
+  exit {POSTPROCESS_PARSE_FAILED_EXIT}
+fi
+"""
 
     def _report_metrics(self, benchmark_results: dict[str, Any] | None, s3_url: str | None, exit_code: int) -> None:
         """Report metrics to dashboard via status API.
@@ -437,7 +521,7 @@ echo "AI analysis complete."
                 nodelist=[self.runtime.nodes.head],
                 output=str(analysis_log),
                 container_image="python:3.11",
-                container_mounts={str(self.runtime.log_dir): "/logs"},
+                container_mounts={self.runtime.log_dir: Path("/logs")},
                 env_to_set=env_to_set,
             )
 
