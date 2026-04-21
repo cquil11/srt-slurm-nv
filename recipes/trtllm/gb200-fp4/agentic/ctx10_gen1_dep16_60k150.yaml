@@ -39,8 +39,8 @@ backend:
   trtllm_config:
     prefill:
       max_batch_size: 1
-      max_num_tokens: 65536
-      max_seq_len: 65536
+      max_num_tokens: 61440
+      max_seq_len: 61440
       tensor_parallel_size: 4
       moe_expert_parallel_size: 4
       enable_attention_dp: true
@@ -58,10 +58,10 @@ backend:
         - cuda_core
       kv_cache_config:
         enable_block_reuse: false
-        free_gpu_memory_fraction: 0.6
+        free_gpu_memory_fraction: 0.5
         dtype: fp8
       cache_transceiver_config:
-        max_tokens_in_buffer: 65536
+        max_tokens_in_buffer: 61440
         backend: UCX
 
     decode:
@@ -72,7 +72,7 @@ backend:
       pipeline_parallel_size: 1
       max_batch_size: 256
       max_num_tokens: 256
-      max_seq_len: 65792
+      max_seq_len: 61696
       cuda_graph_config:
         enable_padding: true
         batch_sizes:
@@ -129,7 +129,7 @@ backend:
         - cutedsl
         - cuda_core
       cache_transceiver_config:
-        max_tokens_in_buffer: 65536
+        max_tokens_in_buffer: 61440
         backend: UCX
       stream_interval: 100
       num_postprocess_workers: 4
