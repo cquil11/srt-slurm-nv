@@ -1,7 +1,7 @@
 # Long-context agentic variant of:
 # recipes/trtllm/gb200-fp4/8k1k/stp/ctx10_gen1_dep16_batch256_eplb256_mtp0.yaml
 # Keep the existing 10P/1D topology and retune only the context window,
-# prefill batch shape, and benchmark placeholder for ~60k input / ~150 output.
+# prefill batch shape, and custom trace replay benchmark.
 # This is a 10:1 worker ratio, but a 40:16 GPU split because the decode
 # worker spans 4 nodes with TP16.
 name: "ctx10_gen1_dep16_60k150_agentic"
@@ -135,11 +135,13 @@ backend:
       num_postprocess_workers: 4
 
 benchmark:
-  type: "sa-bench"
-  isl: 60000
-  osl: 150
-  concurrencies: "16"
-  req_rate: "inf"
+  type: "custom"
+  command: "bash /infmax-workspace/benchmarks/multi_node/agentic_srt.sh"
+  env:
+    INFMAX_CONTAINER_WORKSPACE: "/infmax-workspace"
+    RESULT_DIR: "/logs/agentic"
+    PORT: "8000"
+    IS_MULTINODE: "true"
 
 frontend:
   type: "dynamo"
