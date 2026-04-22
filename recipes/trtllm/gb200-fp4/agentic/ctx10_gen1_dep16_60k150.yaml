@@ -64,7 +64,9 @@ backend:
         free_gpu_memory_fraction: 0.5
         dtype: fp8
       cache_transceiver_config:
-        max_tokens_in_buffer: 16384
+        # Chunked prefill limits compute memory, but disaggregated KV transfer
+        # still needs a buffer large enough for the full long-context request.
+        max_tokens_in_buffer: 136192
         backend: UCX
 
     decode:
@@ -132,7 +134,7 @@ backend:
         - cutedsl
         - cuda_core
       cache_transceiver_config:
-        max_tokens_in_buffer: 16384
+        max_tokens_in_buffer: 136192
         backend: UCX
       stream_interval: 100
       num_postprocess_workers: 4
