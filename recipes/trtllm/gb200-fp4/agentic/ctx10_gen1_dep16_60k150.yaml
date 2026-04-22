@@ -1,10 +1,12 @@
 # Long-context agentic variant of:
 # recipes/trtllm/gb200-fp4/8k1k/stp/ctx10_gen1_dep16_batch256_eplb256_mtp0.yaml
-# Keep the existing 10P/1D topology and retune only the context window,
-# prefill batch shape, and custom trace replay benchmark.
+# Keep the existing 10P/1D topology and retune the context window, prefill
+# scheduling budget, and custom trace replay benchmark.
 # This is a 10:1 worker ratio, but a 40:16 GPU split because the decode
 # worker spans 4 nodes with TP16.
-name: "ctx10_gen1_dep16_60k150_agentic"
+# Use chunked prefill for long agentic traces: max_seq_len covers 128k input
+# plus generation slack, while max_num_tokens is the per-step chunk budget.
+name: "ctx10_gen1_dep16_128k_agentic_chunked"
 
 model:
   path: "dsr1"
@@ -39,8 +41,9 @@ backend:
   trtllm_config:
     prefill:
       max_batch_size: 1
-      max_num_tokens: 61440
-      max_seq_len: 61440
+      max_num_tokens: 16384
+      max_seq_len: 136192
+      enable_chunked_prefill: true
       tensor_parallel_size: 4
       moe_expert_parallel_size: 4
       enable_attention_dp: true
@@ -61,7 +64,7 @@ backend:
         free_gpu_memory_fraction: 0.5
         dtype: fp8
       cache_transceiver_config:
-        max_tokens_in_buffer: 61440
+        max_tokens_in_buffer: 16384
         backend: UCX
 
     decode:
@@ -72,7 +75,7 @@ backend:
       pipeline_parallel_size: 1
       max_batch_size: 256
       max_num_tokens: 256
-      max_seq_len: 61696
+      max_seq_len: 136192
       cuda_graph_config:
         enable_padding: true
         batch_sizes:
@@ -129,7 +132,7 @@ backend:
         - cutedsl
         - cuda_core
       cache_transceiver_config:
-        max_tokens_in_buffer: 61440
+        max_tokens_in_buffer: 16384
         backend: UCX
       stream_interval: 100
       num_postprocess_workers: 4
