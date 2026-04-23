@@ -1,12 +1,13 @@
 # Long-context agentic variant of:
 # recipes/trtllm/gb200-fp4/8k1k/stp/ctx10_gen1_dep16_batch256_eplb256_mtp0.yaml
-# Keep the existing 10P/1D topology and retune the context window, prefill
-# scheduling budget, and custom trace replay benchmark.
-# This is a 10:1 worker ratio, but a 40:16 GPU split because the decode
-# worker spans 4 nodes with TP16.
+# Retune the topology, context window, prefill scheduling budget, and custom
+# trace replay benchmark for long-context agentic traces.
+# The original 10xTP4 prefill shape could not retain 128k context on GB200:
+# TensorRT-LLM clamped the attention window to roughly 65k tokens. Use 5xTP8
+# prefill workers instead so each prefill worker has enough model/KV headroom.
 # Use chunked prefill for long agentic traces: max_seq_len covers 128k input
 # plus generation slack, while max_num_tokens is the per-step chunk budget.
-name: "ctx10_gen1_dep16_128k_agentic_chunked"
+name: "ctx5_gen1_dep16_128k_agentic_chunked"
 
 model:
   path: "dsr1"
@@ -16,10 +17,12 @@ model:
 resources:
   gpu_type: "gb200"
   prefill_nodes: 10
-  prefill_workers: 10
+  prefill_workers: 5
+  gpus_per_prefill: 8
 
   decode_workers: 1
   decode_nodes: 4
+  gpus_per_decode: 16
 
   gpus_per_node: 4
 
@@ -44,8 +47,8 @@ backend:
       max_num_tokens: 16384
       max_seq_len: 136192
       enable_chunked_prefill: true
-      tensor_parallel_size: 4
-      moe_expert_parallel_size: 4
+      tensor_parallel_size: 8
+      moe_expert_parallel_size: 8
       enable_attention_dp: true
       pipeline_parallel_size: 1
       print_iter_log: true
