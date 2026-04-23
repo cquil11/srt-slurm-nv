@@ -83,5 +83,7 @@ benchmark:
     IS_MULTINODE: "true"
 
 health_check:
-  max_attempts: 120
+  # H200 loads this 163-shard FP8 checkpoint slowly from shared storage; the
+  # 20 minute default can expire while both workers are still loading weights.
+  max_attempts: 360
   interval_seconds: 10
