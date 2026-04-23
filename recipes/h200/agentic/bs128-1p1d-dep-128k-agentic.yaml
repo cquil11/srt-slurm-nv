@@ -70,8 +70,10 @@ backend:
       disaggregation-transfer-backend: nixl
       mem-fraction-static: 0.88
       context-length: 136001
-      max-running-requests: 2
-      cuda-graph-max-bs: 32
+      # SGLang partitions this across decode DP ranks; values below dp-size=8
+      # floor the per-rank request budget to zero during scheduler init.
+      max-running-requests: 16
+      cuda-graph-max-bs: 16
 
 benchmark:
   type: "custom"

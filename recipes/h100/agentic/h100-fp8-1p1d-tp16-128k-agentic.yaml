@@ -88,5 +88,7 @@ benchmark:
     IS_MULTINODE: "true"
 
 health_check:
-  max_attempts: 120
+  # H100 reaches model loaded state inside 20 minutes, but first-run DeepGEMM
+  # JIT/warmup can still be running when the default health window expires.
+  max_attempts: 360
   interval_seconds: 10
