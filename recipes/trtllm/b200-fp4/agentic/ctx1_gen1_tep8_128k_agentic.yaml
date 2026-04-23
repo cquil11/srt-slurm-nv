@@ -122,7 +122,7 @@ frontend:
   type: "dynamo"
 
 health_check:
-  max_attempts: 120
+  max_attempts: 360
   interval_seconds: 10
 
 dynamo:
