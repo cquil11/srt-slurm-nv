@@ -5,8 +5,7 @@
 # This is a 10:1 worker ratio, but a 40:16 GPU split because the decode
 # worker spans 4 nodes with TP16.
 # Use chunked prefill for long agentic traces: max_seq_len covers 128k input
-# plus generation slack, while max_num_tokens is kept small enough to preserve
-# KV blocks for the full context window.
+# plus generation slack, while max_num_tokens is the per-step chunk budget.
 name: "ctx10_gen1_dep16_128k_agentic_chunked"
 
 model:
@@ -42,7 +41,7 @@ backend:
   trtllm_config:
     prefill:
       max_batch_size: 1
-      max_num_tokens: 8192
+      max_num_tokens: 16384
       max_seq_len: 136192
       enable_chunked_prefill: true
       tensor_parallel_size: 4
@@ -62,7 +61,7 @@ backend:
         - cuda_core
       kv_cache_config:
         enable_block_reuse: false
-        free_gpu_memory_fraction: 0.98
+        free_gpu_memory_fraction: 0.5
         dtype: fp8
       cache_transceiver_config:
         # Chunked prefill limits compute memory, but disaggregated KV transfer
