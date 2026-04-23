@@ -153,7 +153,8 @@ frontend:
   nginx_container: "nginx-sqsh"
 
 health_check:
-  max_attempts: 120
+  # GB200 TRT decode can still be finishing CUDA graph warmup at 20 minutes.
+  max_attempts: 150
   interval_seconds: 10
 
 dynamo:
