@@ -21,7 +21,7 @@
 {% endif %}
 #SBATCH --account={{ account }}
 #SBATCH --time={{ time_limit }}
-#SBATCH --output={{ output_base }}/%j/logs/sweep_%j.log
+#SBATCH --output={{ output_base }}/sweep_%j.bootstrap.log
 #SBATCH --partition={{ partition }}
 {% for key, value in sbatch_directives.items() %}
 {% if value %}
@@ -46,12 +46,16 @@ OUTPUT_BASE="{{ output_base }}"
 OUTPUT_DIR="${OUTPUT_BASE}/${SLURM_JOB_ID}"
 LOG_DIR="${OUTPUT_DIR}/logs"
 mkdir -p "${LOG_DIR}"
+SWEEP_LOG="${LOG_DIR}/sweep_${SLURM_JOB_ID}.log"
+touch "${SWEEP_LOG}"
 
 # Export for Python orchestrator to use the same paths
 export SRTCTL_OUTPUT_DIR="${OUTPUT_DIR}"
 
-# Redirect stderr to stdout (SLURM captures both via --output)
-exec 2>&1
+# SLURM opens #SBATCH --output before this script runs, so it must point at an
+# already-existing flat path. Once the job id is known, tee into the canonical
+# per-job sweep log that callers monitor and collect.
+exec > >(tee -a "${SWEEP_LOG}") 2>&1
 
 echo "=========================================="
 echo "🚀 srtctl Sweep Orchestrator"
@@ -104,7 +108,7 @@ echo ""
 
 # Run orchestrator on the HOST (not in container) so it has access to srun
 # The orchestrator will spawn containerized workers
-# Output goes to SLURM's --output (sweep_%j.log)
+# Output is teed into ${SWEEP_LOG}; SLURM's --output only captures bootstrap.
 set +e  # Temporarily disable exit-on-error to capture exit code
 cd "${SRTCTL_SOURCE}"
 uv run --python 3.12 --no-dev -m srtctl.cli.do_sweep "${OUTPUT_DIR}/{{ runtime_config_filename }}"

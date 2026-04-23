@@ -335,6 +335,7 @@ def generate_minimal_sbatch_script(
             output_base = str(Path(os.path.expandvars(custom_output_dir)).resolve())
         else:
             output_base = str((srtctl_source / "outputs").resolve())
+    Path(output_base).mkdir(parents=True, exist_ok=True)
 
     env = Environment(loader=FileSystemLoader(str(template_dir)))
     template = env.get_template("job_script_minimal.j2")
