@@ -3,4 +3,4 @@
 # SPDX-License-Identifier: Apache-2.0
 # Install torchao from main branch
 
-pip install torchao
+pip install --break-system-packages torchao
