@@ -146,14 +146,14 @@ class SweepOrchestrator(
             critical=True,
         )
 
-        # 300s timeout to handle slow container imports on first run
+        service_start_timeout = self.config.infra.service_start_timeout_seconds
         logger.info("Waiting for NATS (port 4222) on %s...", infra_node)
-        if not wait_for_port(infra_node, 4222, timeout=300):
+        if not wait_for_port(infra_node, 4222, timeout=service_start_timeout):
             raise RuntimeError("NATS failed to start")
         logger.info("NATS is ready")
 
         logger.info("Waiting for etcd (port 2379) on %s...", infra_node)
-        if not wait_for_port(infra_node, 2379, timeout=300):
+        if not wait_for_port(infra_node, 2379, timeout=service_start_timeout):
             raise RuntimeError("etcd failed to start")
         logger.info("etcd is ready")
 

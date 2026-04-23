@@ -1045,10 +1045,13 @@ class InfraConfig:
         nats_max_payload_mb: Maximum NATS message payload in MB. Default: None (uses
             NATS default of 1MB). Set to 24+ for disaggregated serving with long ISL
             (e.g. 65K+ tokens where prompt data exceeds 1MB in NATS messages).
+        service_start_timeout_seconds: Timeout for NATS/etcd readiness checks.
+            Large container images can take several minutes to mount on first use.
     """
 
     etcd_nats_dedicated_node: bool = False
     nats_max_payload_mb: int | None = None
+    service_start_timeout_seconds: int = 300
 
     Schema: ClassVar[type[Schema]] = Schema
 

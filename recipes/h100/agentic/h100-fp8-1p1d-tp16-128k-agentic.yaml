@@ -17,6 +17,11 @@ resources:
   decode_workers: 1
   gpus_per_node: 8
 
+infra:
+  # H100 NFS/Pyxis startup can be slow enough that the default 5 minute
+  # infra readiness timeout fires before setup_head emits logs.
+  service_start_timeout_seconds: 1200
+
 frontend:
   nginx_container: nginx-sqsh
 
