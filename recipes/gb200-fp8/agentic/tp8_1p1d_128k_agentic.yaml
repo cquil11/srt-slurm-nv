@@ -33,6 +33,7 @@ backend:
     TORCH_DISTRIBUTED_DEFAULT_TIMEOUT: "7200"
     PYTHONUNBUFFERED: "1"
     DYN_SKIP_SGLANG_LOG_FORMATTING: "1"
+    SGLANG_ENABLE_JIT_DEEPGEMM: "false"
     SGLANG_DISAGGREGATION_HEARTBEAT_MAX_FAILURE: "100000"
     SGLANG_DISAGGREGATION_BOOTSTRAP_TIMEOUT: "100000"
     SGLANG_DISAGGREGATION_WAITING_TIMEOUT: "100000"
@@ -47,6 +48,7 @@ backend:
     TORCH_DISTRIBUTED_DEFAULT_TIMEOUT: "7200"
     PYTHONUNBUFFERED: "1"
     DYN_SKIP_SGLANG_LOG_FORMATTING: "1"
+    SGLANG_ENABLE_JIT_DEEPGEMM: "false"
     SGLANG_DISAGGREGATION_HEARTBEAT_MAX_FAILURE: "100000"
     SGLANG_DISAGGREGATION_BOOTSTRAP_TIMEOUT: "100000"
     SGLANG_DISAGGREGATION_WAITING_TIMEOUT: "100000"
@@ -80,7 +82,9 @@ backend:
       kv-cache-dtype: "fp8_e4m3"
       moe-runner-backend: "flashinfer_trtllm"
       fp8-gemm-backend: "flashinfer_trtllm"
-      enable-symm-mem: true
+      enable-flashinfer-allreduce-fusion: false
+      enable-symm-mem: false
+      load-balance-method: "round_robin"
       stream-interval: 10
       watchdog-timeout: 1000000
       disable-radix-cache: true
@@ -106,7 +110,8 @@ backend:
       kv-cache-dtype: "fp8_e4m3"
       moe-runner-backend: "flashinfer_trtllm"
       fp8-gemm-backend: "flashinfer_trtllm"
-      enable-symm-mem: true
+      enable-flashinfer-allreduce-fusion: false
+      enable-symm-mem: false
       prefill-round-robin-balance: true
       stream-interval: 10
       watchdog-timeout: 1000000
