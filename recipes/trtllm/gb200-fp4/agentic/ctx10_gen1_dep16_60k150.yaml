@@ -5,13 +5,13 @@
 # The original 10xTP4 prefill shape could not retain 128k context on GB200:
 # TensorRT-LLM clamped the attention window to roughly 65k tokens. Use 5xTP8
 # prefill workers instead so each prefill worker has enough model/KV headroom.
-# The original TP16/CUTEDSL decode shape also left too few KV blocks after
-# executor allocation, causing TRTLLM to clamp the decode attention window to a
-# few thousand tokens. Match the other 128k FP4 agentic recipes with TP8 decode
-# and TRTLLM MoE so decode can retain long contexts.
+# The original TP16/CUTEDSL decode shape, and later a batch-16 TP8 decode shape,
+# left too few KV blocks after executor allocation. TRTLLM clamped the decode
+# attention window to a few thousand tokens, so use the existing low-latency
+# batch-1 decode shape to reserve memory for long-context KV cache.
 # Use chunked prefill for long agentic traces: max_seq_len covers 128k input
 # plus generation slack, while max_num_tokens is the per-step chunk budget.
-name: "ctx5_gen1_dep8_128k_agentic_chunked"
+name: "ctx5_gen1_dep8_decodebatch1_128k_agentic_chunked"
 
 model:
   path: "dsr1"
@@ -89,24 +89,20 @@ backend:
       allreduce_strategy: MNNVL
       tensor_parallel_size: 8
       moe_expert_parallel_size: 8
-      enable_attention_dp: true
+      enable_attention_dp: false
       enable_lm_head_tp_in_adp: false
       pipeline_parallel_size: 1
-      max_batch_size: 16
-      max_num_tokens: 256
+      max_batch_size: 1
+      max_num_tokens: 1
       max_seq_len: 136192
       cuda_graph_config:
         enable_padding: true
         batch_sizes:
         - 1
-        - 2
-        - 4
-        - 8
-        - 16
       print_iter_log: true
       kv_cache_config:
         enable_block_reuse: false
-        free_gpu_memory_fraction: 0.8
+        free_gpu_memory_fraction: 0.9
         dtype: fp8
       moe_config:
         backend: TRTLLM
