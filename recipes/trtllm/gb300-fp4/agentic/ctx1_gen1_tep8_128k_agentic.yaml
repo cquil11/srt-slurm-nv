@@ -80,7 +80,7 @@ backend:
     decode:
       tensor_parallel_size: 8
       moe_expert_parallel_size: 8
-      enable_attention_dp: false
+      enable_attention_dp: true
       enable_lm_head_tp_in_adp: false
       pipeline_parallel_size: 1
       max_batch_size: 16
@@ -97,7 +97,7 @@ backend:
       print_iter_log: true
       kv_cache_config:
         enable_block_reuse: false
-        free_gpu_memory_fraction: 0.8
+        free_gpu_memory_fraction: 0.7
         dtype: fp8
       moe_config:
         backend: TRTLLM
