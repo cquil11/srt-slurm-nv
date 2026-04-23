@@ -113,7 +113,7 @@ backend:
         backend: UCX
       stream_interval: 100
       num_postprocess_workers: 4
-      allreduce_strategy: MNNVL
+      allreduce_strategy: AUTO
 
 benchmark:
   type: "custom"
