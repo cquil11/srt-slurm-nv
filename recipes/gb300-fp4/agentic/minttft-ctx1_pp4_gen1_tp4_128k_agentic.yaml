@@ -135,5 +135,7 @@ benchmark:
     IS_MULTINODE: "true"
 
 health_check:
-  max_attempts: 120
+  # GB300 first-run FP4 setup can spend most of the default health window in
+  # checkpoint load, quantization, FlashInfer autotune, and DeepGEMM warmup.
+  max_attempts: 360
   interval_seconds: 10
