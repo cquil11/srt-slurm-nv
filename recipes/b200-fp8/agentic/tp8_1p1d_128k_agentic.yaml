@@ -75,7 +75,9 @@ backend:
       disaggregation-bootstrap-port: 30001
       mem-fraction-static: 0.80
       max-prefill-tokens: 32768
-      chunked-prefill-size: 32000
+      # With DP attention, SGLang divides this by dp_size=8. Keep the derived
+      # value divisible by the TRTLLM MLA page size (64).
+      chunked-prefill-size: 32768
       enable-dynamic-chunking: true
       context-length: 136001
       max-running-requests: 2
