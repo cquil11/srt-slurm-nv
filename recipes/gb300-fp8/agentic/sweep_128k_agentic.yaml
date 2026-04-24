@@ -25,6 +25,9 @@ base:
     gpus_per_decode: 4
     gpus_per_node: 4
 
+  sbatch_directives:
+    exclude: "im-gb300-r01-c011"
+
   backend:
     prefill_environment:
       TORCH_DISTRIBUTED_DEFAULT_TIMEOUT: "7200"
