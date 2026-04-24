@@ -28,6 +28,9 @@ base:
   sbatch_directives:
     exclude: "im-gb300-r01-c011"
 
+  slurm:
+    partition: "batch_All"
+
   backend:
     prefill_environment:
       TORCH_DISTRIBUTED_DEFAULT_TIMEOUT: "7200"
