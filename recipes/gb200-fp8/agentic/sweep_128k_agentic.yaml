@@ -89,7 +89,9 @@ base:
         watchdog-timeout: 1000000
         disable-radix-cache: true
         disaggregation-bootstrap-port: 30001
-        scheduler-recv-interval: 10
+        # Scheduler receive skipping has been unstable for the agentic
+        # disaggregated path; keep SGLang on its default receive loop.
+        scheduler-recv-interval: null
       decode:
         served-model-name: "deepseek-ai/DeepSeek-R1"
         trust-remote-code: true
@@ -117,7 +119,7 @@ base:
         watchdog-timeout: 1000000
         disable-radix-cache: true
         disaggregation-bootstrap-port: 30001
-        scheduler-recv-interval: 10
+        scheduler-recv-interval: null
 
   benchmark:
     type: "custom"
