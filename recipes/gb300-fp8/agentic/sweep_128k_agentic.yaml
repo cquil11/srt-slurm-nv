@@ -10,6 +10,9 @@ base:
     num_additional_frontends: 3
     nginx_container: nginx-sqsh
 
+  infra:
+    etcd_nats_dedicated_node: true
+
   model:
     path: "dsr1-fp8"
     container: "dynamo-sglang"
