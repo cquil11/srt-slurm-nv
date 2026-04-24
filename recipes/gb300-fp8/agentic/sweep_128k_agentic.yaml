@@ -153,6 +153,7 @@ override_dep8_1p1d:
     gpus_per_decode: 8
   backend:
     decode_environment:
+      SGLANG_ENABLE_JIT_DEEPGEMM: "true"
       SGLANG_DEEPEP_NUM_MAX_DISPATCH_TOKENS_PER_RANK: "1024"
     sglang_config:
       prefill:
@@ -201,6 +202,7 @@ override_dep8_2p_dep32_1d:
     gpus_per_decode: 32
   backend:
     decode_environment:
+      SGLANG_ENABLE_JIT_DEEPGEMM: "true"
       SGLANG_DEEPEP_NUM_MAX_DISPATCH_TOKENS_PER_RANK: "768"
     sglang_config:
       prefill:
@@ -249,6 +251,7 @@ override_dep8_5p_dep32_1d:
     gpus_per_decode: 32
   backend:
     decode_environment:
+      SGLANG_ENABLE_JIT_DEEPGEMM: "true"
       SGLANG_DEEPEP_NUM_MAX_DISPATCH_TOKENS_PER_RANK: "768"
     sglang_config:
       prefill:
@@ -297,6 +300,7 @@ override_dep8_6p_dep24_1d:
     gpus_per_decode: 24
   backend:
     decode_environment:
+      SGLANG_ENABLE_JIT_DEEPGEMM: "true"
       SGLANG_DEEPEP_NUM_MAX_DISPATCH_TOKENS_PER_RANK: "768"
     sglang_config:
       prefill:
