@@ -163,6 +163,8 @@ override_dep8_1p1d:
         # SGLang partitions this across DP ranks; values below dp-size floor
         # the per-rank request budget to zero during scheduler init.
         max-running-requests: 16
+        # SchedulerRecvSkipper asserts when DP attention is enabled.
+        scheduler-recv-interval: null
         tensor-parallel-size: 8
         data-parallel-size: 8
         expert-parallel-size: 8
@@ -180,6 +182,7 @@ override_dep8_1p1d:
       decode:
         mem-fraction-static: 0.82
         max-running-requests: 16
+        scheduler-recv-interval: null
         tensor-parallel-size: 8
         data-parallel-size: 8
         expert-parallel-size: 8
@@ -214,6 +217,7 @@ override_dep8_2p_dep32_1d:
       prefill:
         mem-fraction-static: 0.75
         max-running-requests: 16
+        scheduler-recv-interval: null
         tensor-parallel-size: 8
         data-parallel-size: 8
         expert-parallel-size: 8
@@ -231,6 +235,7 @@ override_dep8_2p_dep32_1d:
       decode:
         mem-fraction-static: 0.82
         max-running-requests: 64
+        scheduler-recv-interval: null
         tensor-parallel-size: 32
         data-parallel-size: 32
         expert-parallel-size: 32
@@ -269,6 +274,7 @@ override_dep8_3p_dep48_1d:
       prefill:
         mem-fraction-static: 0.75
         max-running-requests: 16
+        scheduler-recv-interval: null
         tensor-parallel-size: 8
         data-parallel-size: 8
         expert-parallel-size: 8
@@ -286,6 +292,7 @@ override_dep8_3p_dep48_1d:
       decode:
         mem-fraction-static: 0.82
         max-running-requests: 64
+        scheduler-recv-interval: null
         tensor-parallel-size: 48
         data-parallel-size: 48
         expert-parallel-size: 48
@@ -324,6 +331,7 @@ override_dep8_5p_dep32_1d:
       prefill:
         mem-fraction-static: 0.80
         max-running-requests: 16
+        scheduler-recv-interval: null
         tensor-parallel-size: 8
         data-parallel-size: 8
         expert-parallel-size: 8
@@ -341,6 +349,7 @@ override_dep8_5p_dep32_1d:
       decode:
         mem-fraction-static: 0.82
         max-running-requests: 64
+        scheduler-recv-interval: null
         tensor-parallel-size: 32
         data-parallel-size: 32
         expert-parallel-size: 32
@@ -379,6 +388,7 @@ override_dep8_6p_dep24_1d:
       prefill:
         mem-fraction-static: 0.80
         max-running-requests: 16
+        scheduler-recv-interval: null
         tensor-parallel-size: 8
         data-parallel-size: 8
         expert-parallel-size: 8
@@ -396,6 +406,7 @@ override_dep8_6p_dep24_1d:
       decode:
         mem-fraction-static: 0.82
         max-running-requests: 64
+        scheduler-recv-interval: null
         tensor-parallel-size: 24
         data-parallel-size: 24
         expert-parallel-size: 24
