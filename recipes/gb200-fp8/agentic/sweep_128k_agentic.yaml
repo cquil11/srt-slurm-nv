@@ -1,0 +1,369 @@
+base:
+  name: "gb200-fp8-128k-agentic-tp8-1p1d"
+
+  dynamo:
+    version: 0.8.1
+
+  frontend:
+    type: dynamo
+    enable_multiple_frontends: true
+    num_additional_frontends: 4
+    nginx_container: nginx-sqsh
+
+  model:
+    path: "dsr1-fp8"
+    container: "dynamo-sglang"
+    precision: "fp8"
+
+  resources:
+    gpu_type: "gb200"
+    prefill_nodes: 2
+    prefill_workers: 1
+    gpus_per_prefill: 8
+    decode_nodes: 2
+    decode_workers: 1
+    gpus_per_decode: 8
+    gpus_per_node: 4
+
+  backend:
+    prefill_environment:
+      TORCH_DISTRIBUTED_DEFAULT_TIMEOUT: "7200"
+      PYTHONUNBUFFERED: "1"
+      DYN_SKIP_SGLANG_LOG_FORMATTING: "1"
+      SGLANG_ENABLE_JIT_DEEPGEMM: "false"
+      SGLANG_DISAGGREGATION_HEARTBEAT_MAX_FAILURE: "100000"
+      SGLANG_DISAGGREGATION_BOOTSTRAP_TIMEOUT: "100000"
+      SGLANG_DISAGGREGATION_WAITING_TIMEOUT: "100000"
+      SGLANG_MOONCAKE_CUSTOM_MEM_POOL: "True"
+      SGLANG_USE_MESSAGE_QUEUE_BROADCASTER: "0"
+      SGLANG_DISABLE_TP_MEMORY_INBALANCE_CHECK: "1"
+      MC_TE_METRIC: "true"
+      MC_FORCE_MNNVL: "1"
+      NCCL_MNNVL_ENABLE: "1"
+      NCCL_CUMEM_ENABLE: "1"
+    decode_environment:
+      TORCH_DISTRIBUTED_DEFAULT_TIMEOUT: "7200"
+      PYTHONUNBUFFERED: "1"
+      DYN_SKIP_SGLANG_LOG_FORMATTING: "1"
+      SGLANG_ENABLE_JIT_DEEPGEMM: "false"
+      SGLANG_DISAGGREGATION_HEARTBEAT_MAX_FAILURE: "100000"
+      SGLANG_DISAGGREGATION_BOOTSTRAP_TIMEOUT: "100000"
+      SGLANG_DISAGGREGATION_WAITING_TIMEOUT: "100000"
+      SGLANG_DECODE_BOOTSTRAP_TIMEOUT: "1000"
+      SGLANG_MOONCAKE_CUSTOM_MEM_POOL: "True"
+      SGLANG_USE_MESSAGE_QUEUE_BROADCASTER: "0"
+      SGLANG_DISABLE_TP_MEMORY_INBALANCE_CHECK: "1"
+      MC_TE_METRIC: "true"
+      MC_FORCE_MNNVL: "1"
+      NCCL_MNNVL_ENABLE: "1"
+      NCCL_CUMEM_ENABLE: "1"
+    sglang_config:
+      prefill:
+        served-model-name: "deepseek-ai/DeepSeek-R1"
+        trust-remote-code: true
+        quantization: "fp8"
+        disaggregation-mode: "prefill"
+        disaggregation-transfer-backend: nixl
+        mem-fraction-static: 0.80
+        max-prefill-tokens: 32768
+        chunked-prefill-size: 32000
+        enable-dynamic-chunking: true
+        context-length: 136001
+        max-running-requests: 2
+        disable-cuda-graph: true
+        tensor-parallel-size: 8
+        pipeline-parallel-size: 1
+        data-parallel-size: 1
+        expert-parallel-size: 1
+        attention-backend: "trtllm_mla"
+        kv-cache-dtype: "fp8_e4m3"
+        moe-runner-backend: "flashinfer_trtllm"
+        fp8-gemm-backend: "flashinfer_trtllm"
+        enable-flashinfer-allreduce-fusion: false
+        enable-symm-mem: false
+        load-balance-method: "round_robin"
+        stream-interval: 10
+        watchdog-timeout: 1000000
+        disable-radix-cache: true
+        disaggregation-bootstrap-port: 30001
+        scheduler-recv-interval: 10
+      decode:
+        served-model-name: "deepseek-ai/DeepSeek-R1"
+        trust-remote-code: true
+        quantization: "fp8"
+        disaggregation-mode: "decode"
+        disaggregation-transfer-backend: nixl
+        mem-fraction-static: 0.85
+        max-prefill-tokens: 32768
+        chunked-prefill-size: -1
+        context-length: 136001
+        max-running-requests: 2
+        cuda-graph-max-bs: 32
+        tensor-parallel-size: 8
+        pipeline-parallel-size: 1
+        data-parallel-size: 1
+        expert-parallel-size: 1
+        attention-backend: "trtllm_mla"
+        kv-cache-dtype: "fp8_e4m3"
+        moe-runner-backend: "flashinfer_trtllm"
+        fp8-gemm-backend: "flashinfer_trtllm"
+        enable-flashinfer-allreduce-fusion: false
+        enable-symm-mem: false
+        prefill-round-robin-balance: true
+        stream-interval: 10
+        watchdog-timeout: 1000000
+        disable-radix-cache: true
+        disaggregation-bootstrap-port: 30001
+        scheduler-recv-interval: 10
+
+  benchmark:
+    type: "custom"
+    command: "bash /infmax-workspace/benchmarks/multi_node/agentic_srt.sh"
+    env:
+      INFMAX_CONTAINER_WORKSPACE: "/infmax-workspace"
+      RESULT_DIR: "/logs/agentic"
+      PORT: "8000"
+      IS_MULTINODE: "true"
+
+  health_check:
+    max_attempts: 360
+    interval_seconds: 10
+
+override_tp4_1p1d:
+  name: "gb200-fp8-128k-agentic-tp4-1p1d"
+  frontend:
+    num_additional_frontends: 3
+  resources:
+    prefill_nodes: 1
+    gpus_per_prefill: 4
+    decode_nodes: 1
+    gpus_per_decode: 4
+  backend:
+    sglang_config:
+      prefill:
+        tensor-parallel-size: 4
+      decode:
+        tensor-parallel-size: 4
+
+override_dep8_1p1d:
+  name: "gb200-fp8-128k-agentic-dep8-1p1d"
+  frontend:
+    num_additional_frontends: 3
+  backend:
+    decode_environment:
+      SGLANG_DEEPEP_NUM_MAX_DISPATCH_TOKENS_PER_RANK: "640"
+    sglang_config:
+      prefill:
+        mem-fraction-static: 0.75
+        tensor-parallel-size: 8
+        data-parallel-size: 8
+        expert-parallel-size: 8
+        enable-dp-attention: true
+        disable-shared-experts-fusion: true
+        eplb-algorithm: "deepseek"
+        moe-a2a-backend: "deepep"
+        deepep-mode: "normal"
+        ep-dispatch-algorithm: "dynamic"
+        moe-dense-tp-size: 1
+        enable-dp-lm-head: true
+        ep-num-redundant-experts: 32
+        deepep-config: "/configs/deepep_config.json"
+      decode:
+        mem-fraction-static: 0.82
+        tensor-parallel-size: 8
+        data-parallel-size: 8
+        expert-parallel-size: 8
+        enable-dp-attention: true
+        disable-shared-experts-fusion: true
+        eplb-algorithm: "deepseek"
+        moe-a2a-backend: "deepep"
+        deepep-mode: "low_latency"
+        ep-dispatch-algorithm: "static"
+        moe-dense-tp-size: 1
+        enable-dp-lm-head: true
+        ep-num-redundant-experts: 32
+        deepep-config: "/configs/deepep_config.json"
+
+override_dep8_2p_dep32_1d:
+  name: "gb200-fp8-128k-agentic-dep8-2p-dep32-1d"
+  frontend:
+    num_additional_frontends: 9
+  resources:
+    prefill_nodes: 4
+    prefill_workers: 2
+    gpus_per_prefill: 8
+    decode_nodes: 8
+    decode_workers: 1
+    gpus_per_decode: 32
+  backend:
+    decode_environment:
+      SGLANG_DEEPEP_NUM_MAX_DISPATCH_TOKENS_PER_RANK: "768"
+    sglang_config:
+      prefill:
+        mem-fraction-static: 0.75
+        tensor-parallel-size: 8
+        data-parallel-size: 8
+        expert-parallel-size: 8
+        enable-dp-attention: true
+        disable-shared-experts-fusion: true
+        eplb-algorithm: "deepseek"
+        moe-a2a-backend: "deepep"
+        deepep-mode: "normal"
+        ep-dispatch-algorithm: "dynamic"
+        moe-dense-tp-size: 1
+        enable-dp-lm-head: true
+        ep-num-redundant-experts: 32
+        deepep-config: "/configs/deepep_config.json"
+      decode:
+        mem-fraction-static: 0.82
+        tensor-parallel-size: 32
+        data-parallel-size: 32
+        expert-parallel-size: 32
+        enable-dp-attention: true
+        disable-shared-experts-fusion: true
+        eplb-algorithm: "deepseek"
+        moe-a2a-backend: "deepep"
+        deepep-mode: "low_latency"
+        ep-dispatch-algorithm: "static"
+        moe-dense-tp-size: 1
+        enable-dp-lm-head: true
+        ep-num-redundant-experts: 32
+        deepep-config: "/configs/deepep_config.json"
+
+override_dep8_3p_dep48_1d:
+  name: "gb200-fp8-128k-agentic-dep8-3p-dep48-1d"
+  frontend:
+    num_additional_frontends: 9
+  resources:
+    prefill_nodes: 6
+    prefill_workers: 3
+    gpus_per_prefill: 8
+    decode_nodes: 12
+    decode_workers: 1
+    gpus_per_decode: 48
+  backend:
+    decode_environment:
+      SGLANG_DEEPEP_NUM_MAX_DISPATCH_TOKENS_PER_RANK: "768"
+    sglang_config:
+      prefill:
+        mem-fraction-static: 0.75
+        tensor-parallel-size: 8
+        data-parallel-size: 8
+        expert-parallel-size: 8
+        enable-dp-attention: true
+        disable-shared-experts-fusion: true
+        eplb-algorithm: "deepseek"
+        moe-a2a-backend: "deepep"
+        deepep-mode: "normal"
+        ep-dispatch-algorithm: "dynamic"
+        moe-dense-tp-size: 1
+        enable-dp-lm-head: true
+        ep-num-redundant-experts: 32
+        deepep-config: "/configs/deepep_config.json"
+      decode:
+        mem-fraction-static: 0.82
+        tensor-parallel-size: 48
+        data-parallel-size: 48
+        expert-parallel-size: 48
+        enable-dp-attention: true
+        disable-shared-experts-fusion: true
+        eplb-algorithm: "deepseek"
+        moe-a2a-backend: "deepep"
+        deepep-mode: "low_latency"
+        ep-dispatch-algorithm: "static"
+        moe-dense-tp-size: 1
+        enable-dp-lm-head: true
+        ep-num-redundant-experts: 32
+        deepep-config: "/configs/deepep_config.json"
+
+override_dep8_5p_dep32_1d:
+  name: "gb200-fp8-128k-agentic-dep8-5p-dep32-1d"
+  frontend:
+    num_additional_frontends: 9
+  resources:
+    prefill_nodes: 10
+    prefill_workers: 5
+    gpus_per_prefill: 8
+    decode_nodes: 8
+    decode_workers: 1
+    gpus_per_decode: 32
+  backend:
+    decode_environment:
+      SGLANG_DEEPEP_NUM_MAX_DISPATCH_TOKENS_PER_RANK: "256"
+    sglang_config:
+      prefill:
+        mem-fraction-static: 0.80
+        tensor-parallel-size: 8
+        data-parallel-size: 8
+        expert-parallel-size: 8
+        enable-dp-attention: true
+        disable-shared-experts-fusion: true
+        eplb-algorithm: "deepseek"
+        moe-a2a-backend: "deepep"
+        deepep-mode: "normal"
+        ep-dispatch-algorithm: "dynamic"
+        moe-dense-tp-size: 1
+        enable-dp-lm-head: true
+        ep-num-redundant-experts: 32
+        deepep-config: "/configs/deepep_config.json"
+      decode:
+        mem-fraction-static: 0.82
+        tensor-parallel-size: 32
+        data-parallel-size: 32
+        expert-parallel-size: 32
+        enable-dp-attention: true
+        disable-shared-experts-fusion: true
+        eplb-algorithm: "deepseek"
+        moe-a2a-backend: "deepep"
+        deepep-mode: "low_latency"
+        ep-dispatch-algorithm: "static"
+        moe-dense-tp-size: 1
+        enable-dp-lm-head: true
+        ep-num-redundant-experts: 32
+        deepep-config: "/configs/deepep_config.json"
+
+override_dep8_6p_dep24_1d:
+  name: "gb200-fp8-128k-agentic-dep8-6p-dep24-1d"
+  frontend:
+    num_additional_frontends: 9
+  resources:
+    prefill_nodes: 12
+    prefill_workers: 6
+    gpus_per_prefill: 8
+    decode_nodes: 6
+    decode_workers: 1
+    gpus_per_decode: 24
+  backend:
+    decode_environment:
+      SGLANG_DEEPEP_NUM_MAX_DISPATCH_TOKENS_PER_RANK: "512"
+    sglang_config:
+      prefill:
+        mem-fraction-static: 0.80
+        tensor-parallel-size: 8
+        data-parallel-size: 8
+        expert-parallel-size: 8
+        enable-dp-attention: true
+        disable-shared-experts-fusion: true
+        eplb-algorithm: "deepseek"
+        moe-a2a-backend: "deepep"
+        deepep-mode: "normal"
+        ep-dispatch-algorithm: "dynamic"
+        moe-dense-tp-size: 1
+        enable-dp-lm-head: true
+        ep-num-redundant-experts: 32
+        deepep-config: "/configs/deepep_config.json"
+      decode:
+        mem-fraction-static: 0.82
+        tensor-parallel-size: 24
+        data-parallel-size: 24
+        expert-parallel-size: 24
+        enable-dp-attention: true
+        disable-shared-experts-fusion: true
+        eplb-algorithm: "deepseek"
+        moe-a2a-backend: "deepep"
+        deepep-mode: "low_latency"
+        ep-dispatch-algorithm: "static"
+        moe-dense-tp-size: 1
+        enable-dp-lm-head: true
+        ep-num-redundant-experts: 32
+        deepep-config: "/configs/deepep_config.json"
