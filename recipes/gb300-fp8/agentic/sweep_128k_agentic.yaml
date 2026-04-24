@@ -161,6 +161,9 @@ override_dep8_1p1d:
     sglang_config:
       prefill:
         mem-fraction-static: 0.75
+        # SGLang partitions this across DP ranks; values below dp-size floor
+        # the per-rank request budget to zero during scheduler init.
+        max-running-requests: 16
         tensor-parallel-size: 8
         data-parallel-size: 8
         expert-parallel-size: 8
@@ -177,6 +180,7 @@ override_dep8_1p1d:
         deepep-config: "/configs/deepep_config.json"
       decode:
         mem-fraction-static: 0.82
+        max-running-requests: 16
         tensor-parallel-size: 8
         data-parallel-size: 8
         expert-parallel-size: 8
@@ -210,6 +214,7 @@ override_dep8_2p_dep32_1d:
     sglang_config:
       prefill:
         mem-fraction-static: 0.75
+        max-running-requests: 16
         tensor-parallel-size: 8
         data-parallel-size: 8
         expert-parallel-size: 8
@@ -226,6 +231,7 @@ override_dep8_2p_dep32_1d:
         deepep-config: "/configs/deepep_config.json"
       decode:
         mem-fraction-static: 0.82
+        max-running-requests: 64
         tensor-parallel-size: 32
         data-parallel-size: 32
         expert-parallel-size: 32
@@ -259,6 +265,7 @@ override_dep8_5p_dep32_1d:
     sglang_config:
       prefill:
         mem-fraction-static: 0.75
+        max-running-requests: 16
         tensor-parallel-size: 8
         data-parallel-size: 8
         expert-parallel-size: 8
@@ -275,6 +282,7 @@ override_dep8_5p_dep32_1d:
         deepep-config: "/configs/deepep_config.json"
       decode:
         mem-fraction-static: 0.82
+        max-running-requests: 64
         tensor-parallel-size: 32
         data-parallel-size: 32
         expert-parallel-size: 32
@@ -308,6 +316,7 @@ override_dep8_6p_dep24_1d:
     sglang_config:
       prefill:
         mem-fraction-static: 0.75
+        max-running-requests: 16
         tensor-parallel-size: 8
         data-parallel-size: 8
         expert-parallel-size: 8
@@ -324,6 +333,7 @@ override_dep8_6p_dep24_1d:
         deepep-config: "/configs/deepep_config.json"
       decode:
         mem-fraction-static: 0.82
+        max-running-requests: 64
         tensor-parallel-size: 24
         data-parallel-size: 24
         expert-parallel-size: 24
