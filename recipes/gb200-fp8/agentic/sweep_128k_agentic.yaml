@@ -177,7 +177,7 @@ override_dep8_1p1d:
         enable-dp-attention: true
         disable-shared-experts-fusion: true
         eplb-algorithm: "deepseek"
-        moe-runner-backend: null
+        moe-runner-backend: "deep_gemm"
         moe-a2a-backend: "deepep"
         deepep-mode: "low_latency"
         ep-dispatch-algorithm: "static"
@@ -225,7 +225,7 @@ override_dep8_2p_dep32_1d:
         enable-dp-attention: true
         disable-shared-experts-fusion: true
         eplb-algorithm: "deepseek"
-        moe-runner-backend: null
+        moe-runner-backend: "deep_gemm"
         moe-a2a-backend: "deepep"
         deepep-mode: "low_latency"
         ep-dispatch-algorithm: "static"
@@ -273,7 +273,7 @@ override_dep8_3p_dep48_1d:
         enable-dp-attention: true
         disable-shared-experts-fusion: true
         eplb-algorithm: "deepseek"
-        moe-runner-backend: null
+        moe-runner-backend: "deep_gemm"
         moe-a2a-backend: "deepep"
         deepep-mode: "low_latency"
         ep-dispatch-algorithm: "static"
@@ -321,7 +321,7 @@ override_dep8_5p_dep32_1d:
         enable-dp-attention: true
         disable-shared-experts-fusion: true
         eplb-algorithm: "deepseek"
-        moe-runner-backend: null
+        moe-runner-backend: "deep_gemm"
         moe-a2a-backend: "deepep"
         deepep-mode: "low_latency"
         ep-dispatch-algorithm: "static"
@@ -369,7 +369,7 @@ override_dep8_6p_dep24_1d:
         enable-dp-attention: true
         disable-shared-experts-fusion: true
         eplb-algorithm: "deepseek"
-        moe-runner-backend: null
+        moe-runner-backend: "deep_gemm"
         moe-a2a-backend: "deepep"
         deepep-mode: "low_latency"
         ep-dispatch-algorithm: "static"
