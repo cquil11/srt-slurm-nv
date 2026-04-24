@@ -141,6 +141,7 @@ override_tp4_1p1d:
   backend:
     sglang_config:
       prefill:
+        mem-fraction-static: 0.85
         tensor-parallel-size: 4
       decode:
         tensor-parallel-size: 4
