@@ -78,7 +78,7 @@ backend:
       context-length: 136001
       cuda-graph-max-bs: 32
       data-parallel-size: 1
-      disable-radix-cache: true
+      disable-radix-cache: false
       disaggregation-bootstrap-port: 30001
       disaggregation-mode: decode
       disaggregation-transfer-backend: nixl
@@ -103,7 +103,7 @@ backend:
       enable-dynamic-chunking: true
       context-length: 136001
       data-parallel-size: 1
-      disable-radix-cache: true
+      disable-radix-cache: false
       disaggregation-bootstrap-port: 30001
       disaggregation-mode: prefill
       disaggregation-transfer-backend: nixl
