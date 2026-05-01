@@ -126,7 +126,7 @@ frontend:
   nginx_container: "nginx-sqsh"
 
 health_check:
-  max_attempts: 150
+  max_attempts: 300
   interval_seconds: 10
 
 dynamo:

@@ -138,7 +138,7 @@ frontend:
 
 health_check:
   # GB200 TRT decode can still be finishing CUDA graph warmup at 20 minutes.
-  max_attempts: 150
+  max_attempts: 300
   interval_seconds: 10
 
 dynamo:
