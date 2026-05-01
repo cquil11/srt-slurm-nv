@@ -1,9 +1,7 @@
-# Long-context agentic variant of:
-# recipes/gb300-fp4/128k8k/minttft-ctx1_pp4_gen1_tp4_eplb0_mtp0-chunked-32k-dynchunk.yaml
-#
-# Keep the known 128k GB300 SGLang topology and swap the fixed-sequence
-# benchmark for the InferenceX trace replay custom benchmark.
-name: "gb300-fp4-128k-agentic-ctx1_pp4_gen1_tp4"
+# Long-context agentic 1P1D TP4 variant for GB300 FP4 SGLang.
+# Simpler 1P×TP4 + 1D×TP4 shape (2 nodes). Anchors the low/mid concurrency
+# end of the SGLang Pareto curve without paying for DEP attention.
+name: "gb300-fp4-128k-agentic-ctx1_gen1_tp4"
 
 dynamo:
   version: 0.8.1
@@ -11,11 +9,11 @@ dynamo:
 frontend:
   type: dynamo
   enable_multiple_frontends: true
-  num_additional_frontends: 3
+  num_additional_frontends: 4
   nginx_container: nginx-sqsh
 
 model:
-  path: "dsr1"
+  path: "dsr1-fp4"
   container: "dynamo-sglang"
   precision: "fp4"
 
@@ -33,7 +31,6 @@ backend:
     TORCH_DISTRIBUTED_DEFAULT_TIMEOUT: "7200"
     PYTHONUNBUFFERED: "1"
     DYN_SKIP_SGLANG_LOG_FORMATTING: "1"
-    SGLANG_ENABLE_JIT_DEEPGEMM: "false"
     SGLANG_NVFP4_CKPT_FP8_GEMM_IN_ATTN: "1"
     SGLANG_PER_TOKEN_GROUP_QUANT_8BIT_V2: "1"
     SGLANG_DISAGGREGATION_HEARTBEAT_MAX_FAILURE: "100000"
@@ -56,7 +53,6 @@ backend:
     TORCH_DISTRIBUTED_DEFAULT_TIMEOUT: "7200"
     PYTHONUNBUFFERED: "1"
     DYN_SKIP_SGLANG_LOG_FORMATTING: "1"
-    SGLANG_ENABLE_JIT_DEEPGEMM: "false"
     SGLANG_NVFP4_CKPT_FP8_GEMM_IN_ATTN: "1"
     SGLANG_PER_TOKEN_GROUP_QUANT_8BIT_V2: "1"
     SGLANG_DISAGGREGATION_HEARTBEAT_MAX_FAILURE: "100000"
@@ -116,14 +112,14 @@ backend:
       kv-cache-dtype: fp8_e4m3
       load-balance-method: round_robin
       mem-fraction-static: 0.80
-      max-running-requests: 8
+      max-running-requests: 4
       moe-runner-backend: flashinfer_trtllm
-      pipeline-parallel-size: 4
+      pipeline-parallel-size: 1
       quantization: modelopt_fp4
       scheduler-recv-interval: 1
       served-model-name: deepseek-ai/DeepSeek-R1
       stream-interval: 10
-      tensor-parallel-size: 1
+      tensor-parallel-size: 4
       trust-remote-code: true
       watchdog-timeout: 1000000
 
@@ -137,7 +133,5 @@ benchmark:
     IS_MULTINODE: "true"
 
 health_check:
-  # GB300 first-run FP4 setup can spend most of the default health window in
-  # checkpoint load, quantization, FlashInfer autotune, and DeepGEMM warmup.
   max_attempts: 360
   interval_seconds: 10
