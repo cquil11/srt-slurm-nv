@@ -135,3 +135,12 @@ benchmark:
 health_check:
   max_attempts: 360
   interval_seconds: 10
+
+# Lift the slurm cgroup memory cap on cw — DefMemPerCPU=4096MB on the
+# CoreWeave gb300 cluster gives only ~8GB to the orchestrator step,
+# which the 1.batch process OOMs out of within seconds. mem: 0 means
+# 'use all available memory on the node'. No-op on gb300-nv where the
+# default memory allocation is already generous.
+sbatch_directives:
+  mem: "0"
+  cpus-per-task: "32"
