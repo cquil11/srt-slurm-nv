@@ -244,6 +244,16 @@ def start_srun_process(
             mount_str = ",".join(f"{host}:{container}" for host, container in container_mounts.items())
             srun_cmd.extend(["--container-mounts", mount_str])
 
+        # Request all available node memory for container workers. Without
+        # this, --ntasks-per-node=1 sruns on clusters configured with a
+        # positive DefMemPerCPU (e.g. CW gb300: DefMemPerCPU=4096) get
+        # cpus_per_task * DefMemPerCPU = 4 GB per task by default, and the
+        # cgroup OOM-kills the worker mid-init when it tries to mmap model
+        # weights or pin CUDA buffers. `--mem=0` is the SLURM idiom for
+        # "give this srun all the memory on the node it lands on" and is
+        # required for any workload that loads multi-GB models.
+        srun_cmd.extend(["--mem", "0"])
+
     # Additional srun options
     if srun_options:
         for key, value in srun_options.items():
