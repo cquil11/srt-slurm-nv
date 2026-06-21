@@ -339,13 +339,15 @@ class BenchmarkStageMixin:
     def _get_aiperf_server_metrics_env(self) -> dict[str, str]:
         """Build server metrics URLs for AIPerf benchmarks.
 
-        Collects metrics endpoints from all backend processes that expose
-        a sys_port (vLLM workers with AIPerf metrics enabled), plus KVBM
-        metrics endpoints if DYN_KVBM_METRICS_PORT is configured.
+        Collects metrics endpoints from logical backend worker leaders that
+        expose a sys_port, plus KVBM metrics endpoints if
+        DYN_KVBM_METRICS_PORT is configured. Distributed follower processes
+        have system servers of their own, but do not own a separate vLLM
+        engine and therefore must not appear as AIPerf workers.
         """
         urls: list[str] = []
         for process in self.backend_processes:
-            if process.sys_port > 0:
+            if process.is_leader and process.sys_port > 0:
                 host = get_hostname_ip(process.node, self.runtime.network_interface)
                 urls.append(f"http://{host}:{process.sys_port}/metrics")
 
@@ -361,7 +363,9 @@ class BenchmarkStageMixin:
 
         if not urls:
             return {}
-        return {"AIPERF_SERVER_METRICS_URLS": ",".join(sorted(set(urls)))}
+        # Preserve topology order so per-worker AIPerf labels remain stable
+        # (prefill 0, prefill 1, decode 0) across different node allocations.
+        return {"AIPERF_SERVER_METRICS_URLS": ",".join(dict.fromkeys(urls))}
 
     def _get_benchmark_env(self, runner: "BenchmarkRunner") -> dict[str, str]:
         """Get environment variables for the benchmark script."""
@@ -380,10 +384,12 @@ class BenchmarkStageMixin:
         if runner.name == "SA-Bench":
             env.update(self._get_sa_bench_slow_down_env())
 
-        # Add AIPerf-specific env vars for AIPerf-driven benchmarks only
-        if isinstance(runner, AIPerfBenchmarkRunner):
+        # Built-in AIPerf runners discover worker metrics automatically.
+        # Custom agentic runners can opt in explicitly without requiring
+        # Slurm CLI tools or topology parsing inside the model container.
+        if isinstance(runner, AIPerfBenchmarkRunner) or self.config.benchmark.aiperf_server_metrics:
             env.update(self._get_aiperf_server_metrics_env())
-            if self.config.benchmark.aiperf_package:
-                env["AIPERF_PACKAGE"] = self.config.benchmark.aiperf_package
+        if isinstance(runner, AIPerfBenchmarkRunner) and self.config.benchmark.aiperf_package:
+            env["AIPERF_PACKAGE"] = self.config.benchmark.aiperf_package
 
         return env

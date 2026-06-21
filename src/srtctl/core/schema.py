@@ -630,6 +630,10 @@ class BenchmarkConfig:
     aiperf_package: str | None = None
     # Extra aiperf CLI flags passed through to bench.sh (e.g., benchmark-duration: 600, workers-max: 200)
     aiperf_args: dict[str, Any] = field(default_factory=dict)
+    # Discover logical backend worker metrics endpoints and expose them to the
+    # benchmark as AIPERF_SERVER_METRICS_URLS. Built-in AIPerf runners do this
+    # automatically; custom commands must opt in explicitly.
+    aiperf_server_metrics: bool = False
     # Post-process: export analysis/srtlog per-node batch CSVs + gen_throughput.csv (see postprocess_stage)
     export_node_metrics: bool = False
     # SA-Bench: optional SGLang /slow_down on decode workers (sglang frontend only; see benchmark_stage)

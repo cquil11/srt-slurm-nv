@@ -207,6 +207,48 @@ class TestCustomBenchmarkRunner:
         assert runner.get_container_image(config, runtime) == "nvcr.io/nvidia/python:3.11"
         assert runner.get_environment(config, runtime) == {"FOO": "bar"}
 
+    def test_custom_aiperf_metrics_discovers_logical_worker_leaders(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from srtctl.benchmarks.custom import CustomBenchmarkRunner
+        from srtctl.cli.mixins.benchmark_stage import BenchmarkStageMixin
+        from srtctl.core.schema import BenchmarkConfig
+        from srtctl.core.topology import Process
+
+        class Stage(BenchmarkStageMixin):
+            pass
+
+        stage = Stage()
+        stage.config = SimpleNamespace(
+            benchmark=BenchmarkConfig(
+                type="custom",
+                command="run-agentic",
+                aiperf_server_metrics=True,
+            ),
+            backend=SimpleNamespace(prefill_environment={}, aggregated_environment={}),
+            backend_type="vllm",
+            frontend=SimpleNamespace(type="dynamo"),
+            profiling=SimpleNamespace(enabled=False),
+        )
+        stage.runtime = SimpleNamespace(environment={}, network_interface=None)
+        stage._processes = [
+            Process("node-a", frozenset(range(4)), 7500, 8100, "prefill", 0, node_rank=0),
+            Process("node-b", frozenset(range(4)), 7501, 8101, "prefill", 0, node_rank=1),
+            Process("node-c", frozenset(range(4)), 7502, 8102, "prefill", 1, node_rank=0),
+            Process("node-d", frozenset(range(4)), 7503, 8103, "prefill", 1, node_rank=1),
+            Process("node-e", frozenset(range(4)), 7504, 8104, "decode", 0, node_rank=0),
+            Process("node-f", frozenset(range(4)), 7505, 8105, "decode", 0, node_rank=1),
+        ]
+        Stage.backend_processes = property(lambda self: self._processes)
+
+        with patch("srtctl.cli.mixins.benchmark_stage.get_hostname_ip", side_effect=lambda node, _: node):
+            env = stage._get_benchmark_env(CustomBenchmarkRunner())
+
+        assert env["AIPERF_SERVER_METRICS_URLS"] == (
+            "http://node-a:7500/metrics,http://node-c:7502/metrics,http://node-e:7504/metrics"
+        )
+
 
 class TestSGLangBenchRunner:
     """Test SGLang-Bench runner."""
