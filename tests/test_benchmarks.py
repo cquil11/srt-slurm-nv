@@ -249,6 +249,52 @@ class TestCustomBenchmarkRunner:
             "http://node-a:7500/metrics,http://node-c:7502/metrics,http://node-e:7504/metrics"
         )
 
+    def test_custom_aiperf_metrics_includes_every_vllm_dp_rank(self):
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        from srtctl.benchmarks.custom import CustomBenchmarkRunner
+        from srtctl.cli.mixins.benchmark_stage import BenchmarkStageMixin
+        from srtctl.core.schema import BenchmarkConfig
+        from srtctl.core.topology import Process
+
+        class Stage(BenchmarkStageMixin):
+            pass
+
+        backend = SimpleNamespace(
+            prefill_environment={},
+            aggregated_environment={},
+            _is_dp_mode=lambda mode: mode == "agg",
+        )
+        stage = Stage()
+        stage.config = SimpleNamespace(
+            benchmark=BenchmarkConfig(
+                type="custom",
+                command="run-agentic",
+                aiperf_server_metrics=True,
+            ),
+            backend=backend,
+            backend_type="vllm",
+            frontend=SimpleNamespace(type="dynamo"),
+            profiling=SimpleNamespace(enabled=False),
+        )
+        stage.runtime = SimpleNamespace(environment={}, network_interface=None)
+        stage._processes = [
+            Process("node-a", frozenset(range(4)), 7500, 8100, "agg", 0, node_rank=0),
+            Process("node-b", frozenset(range(4)), 7501, 0, "agg", 0, node_rank=1),
+            Process("node-c", frozenset(range(4)), 7502, 0, "agg", 0, node_rank=2),
+            Process("node-d", frozenset(range(4)), 7503, 0, "agg", 0, node_rank=3),
+        ]
+        Stage.backend_processes = property(lambda self: self._processes)
+
+        with patch("srtctl.cli.mixins.benchmark_stage.get_hostname_ip", side_effect=lambda node, _: node):
+            env = stage._get_benchmark_env(CustomBenchmarkRunner())
+
+        assert env["AIPERF_SERVER_METRICS_URLS"] == (
+            "http://node-a:7500/metrics,http://node-b:7501/metrics,"
+            "http://node-c:7502/metrics,http://node-d:7503/metrics"
+        )
+
 
 class TestSGLangBenchRunner:
     """Test SGLang-Bench runner."""

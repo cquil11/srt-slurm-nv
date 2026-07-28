@@ -341,13 +341,15 @@ class BenchmarkStageMixin:
 
         Collects metrics endpoints from logical backend worker leaders that
         expose a sys_port, plus KVBM metrics endpoints if
-        DYN_KVBM_METRICS_PORT is configured. Distributed follower processes
-        have system servers of their own, but do not own a separate vLLM
-        engine and therefore must not appear as AIPerf workers.
+        DYN_KVBM_METRICS_PORT is configured. Each externally launched vLLM
+        data-parallel rank owns a separate engine, even when it is not the
+        endpoint leader, so all of those rank metrics are included.
         """
         urls: list[str] = []
         for process in self.backend_processes:
-            if process.is_leader and process.sys_port > 0:
+            is_dp_mode = getattr(self.config.backend, "_is_dp_mode", lambda _mode: False)
+            is_vllm_dp_rank = self.config.backend_type == "vllm" and is_dp_mode(process.endpoint_mode)
+            if (process.is_leader or is_vllm_dp_rank) and process.sys_port > 0:
                 host = get_hostname_ip(process.node, self.runtime.network_interface)
                 urls.append(f"http://{host}:{process.sys_port}/metrics")
 
